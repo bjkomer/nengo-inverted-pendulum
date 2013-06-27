@@ -1,0 +1,108 @@
+<?xml version="1.0" ?>
+<gazebo version="1.2">
+  <world name="default">
+   <!-- A ground plane -->
+   <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <!-- A global light source -->
+   <include>
+      <uri>model://sun</uri>
+    </include>
+
+
+    <model name="inverted_pendulum">
+      <static>false</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="pendulum">
+        <pose>0 0 0.8 0 0 0</pose>
+        <inertial>
+          <pose>0 0.0 0.0 0 0 0</pose>
+          <mass>3.0</mass>
+          <inertia>
+            <ixx>0.2</ixx>
+            <ixy>0.1</ixy>
+            <ixz>0.1</ixz>
+            <iyy>0.2</iyy>
+            <iyz>0.1</iyz>
+            <izz>0.2</izz>
+          </inertia>
+        </inertial>
+        <collision name="pendulum_collision">
+          <pose>0 0.0 0.0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.1 0.1 1</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>.1</mu>
+                <mu2>.1</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="pendulum_visual">
+          <pose>0 0.0 0.0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.1 0.1 1</size>
+            </box>
+          </geometry>
+        </visual>
+      </link>
+      <link name="cart">
+        <pose>0 0 0.15 0 0 0</pose>
+        <inertial>
+          <pose>0 0.0 0.0 0 0 0</pose>
+          <mass>50.0</mass>
+          <inertia>
+            <ixx>0.9</ixx>
+            <ixy>0.9</ixy>
+            <ixz>0.9</ixz>
+            <iyy>0.9</iyy>
+            <iyz>0.9</iyz>
+            <izz>0.9</izz>
+          </inertia>
+        </inertial>
+        <collision name="cart_collision">
+          <pose>0 0.0 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.3 0.3 0.3</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>.1</mu>
+                <mu2>.1</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="cart_visual">
+          <pose>0 0.0 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.3 0.3 .3</size>
+            </box>
+          </geometry>
+        </visual>
+      </link>
+      <joint name="pendulum_joint" type="revolute">
+        <parent>pendulum</parent>
+        <child>cart</child>
+        <pose>0 0.0 0.0 0 0 0</pose>
+        <axis>
+          <xyz>1 0 0</xyz>
+        </axis>
+      </joint>
+      <plugin name="ros_based_plugin" filename="libros_model_plugin.so"/>
+    </model>
+
+  </world>
+</gazebo>
