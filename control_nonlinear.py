@@ -154,8 +154,26 @@ class Learn(nef.Node):
             decoder = np.array(self.origin.decoders)
             self.origin.decoders = decoder + da
 """        
+class Learn(nef.SimpleNode):
+    def __init__(self, name, origin):
+        nef.SimpleNode.__init__(self, name)
+        self.s = self.make_input('s', dimensions=1, pstc=0.01)
+        self.Y = self.make_input('Y', dimensions=300, pstc=0.01)
+        self.origin = origin
+        self.counter = 0
+    def tick(self):
+        self.counter += 1
+        if self.counter%10 == 0:
+            delta = -rho * np.array(self.s.get())*0.00001
+            Y = np.array(list(self.Y.get()))
+            Y.shape = 300,1
+            da = np.dot(Y, delta)
+            decoder = np.array(self.origin.decoders)
+            self.origin.decoders = decoder + da
         
 ##learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
+#learn=net.add(Learn('learn', net.get_origin('state').getOrigin('learn')))
+#learn=net.add(Learn('learn', net.get_origin('state')))
 ##net.connect('s', learn.getTermination('s'))
 ##net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
         
