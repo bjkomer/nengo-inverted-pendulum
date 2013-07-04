@@ -53,11 +53,16 @@ namespace gazebo
     // Called by the world update start event
     public: void OnUpdate()
     {
+      // There is no built-in acceleration function, so need to calculate it manually
+      common::Time current_time = this->model->GetWorld()->GetSimTime();
+      double dt = current_time.Double() - this->last_update_time.Double();
+      this->last_update_time = current_time;
+      this->joint_acceleration = ( this->joint->GetVelocity(0) - this->joint_velocity ) / dt;
       this->joint_position = this->joint->GetAngle(0).Radian();
       this->joint_velocity = this->joint->GetVelocity(0);
       this->position_msg.x = this->joint_position;
       this->position_msg.y = this->joint_velocity;
-      this->position_msg.z = 0; //FIXME: either acceleration, or get rid of this
+      this->position_msg.z = this->joint_acceleration;
       this->pub.publish( this->position_msg );
       ros::spinOnce();
     }
@@ -71,7 +76,9 @@ namespace gazebo
       physics::JointPtr joint;
       double joint_position;
       double joint_velocity;
+      double joint_acceleration;
       geometry_msgs::Vector3 position_msg;
+      common::Time last_update_time;
 
 
     // Pointer to the model

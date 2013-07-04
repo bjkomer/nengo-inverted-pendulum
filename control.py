@@ -11,10 +11,10 @@ net=nef.Network('Pendulum')
 position_input = net.make_input('Position',value=[0])
 velocity_input = net.make_input('Velocity',value=[0])
 
-torque_population = net.make('Torque', neurons=30, dimensions=1) # population for the output torque
+torque_population = net.make('Torque', neurons=100, dimensions=1) # population for the output torque
 
 net.connect('Position', 'Torque', weight=-1.0)
-net.connect('Velocity', 'Torque', weight=0.1)
+net.connect('Velocity', 'Torque', weight=-0.3)
 
 def motion_callback( motion_msg ):
   position_input.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.x ] ) ) 
