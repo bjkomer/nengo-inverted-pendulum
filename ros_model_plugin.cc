@@ -5,8 +5,10 @@
 #include <stdio.h>
 
 #include "ros/ros.h"
-#include "std_msgs/Float64.h"
-#include "geometry_msgs/Vector3.h" // use this for position and velocity for now
+///#include "std_msgs/Float64.h"
+///#include "geometry_msgs/Vector3.h" // use this for position and velocity for now
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/Wrench.h" // use this for position and velocity for now
 
 namespace gazebo
 {   
@@ -38,11 +40,14 @@ namespace gazebo
       this->joint = this->model->GetJoint( "pendulum_joint" );
 
       // ROS Subscriber
-      this->sub = this->node->subscribe<std_msgs::Float64>( "torque", 1000, 
-                                                            &ROSModelPlugin::ROSCallback, this );
+      ///this->sub = this->node->subscribe<std_msgs::Float64>( "torque", 1000, 
+      ///                                                      &ROSModelPlugin::ROSCallback, this );
+      this->sub = this->node->subscribe<geometry_msgs::Wrench>( "control", 1000, 
+                                                                &ROSModelPlugin::ROSCallback, this );
 
       // ROS Publisher
-      this->pub = this->node->advertise<geometry_msgs::Vector3>( "motion", 1000 );
+      ///this->pub = this->node->advertise<geometry_msgs::Vector3>( "motion", 1000 );
+      this->pub = this->node->advertise<nav_msgs::Odometry>( "motion", 1000 );
 
       // Listen to the update event. This event is broadcast every
       // simulation iteration.
@@ -60,16 +65,20 @@ namespace gazebo
       this->joint_acceleration = ( this->joint->GetVelocity(0) - this->joint_velocity ) / dt;
       this->joint_position = this->joint->GetAngle(0).Radian();
       this->joint_velocity = this->joint->GetVelocity(0);
-      this->position_msg.x = this->joint_position;
-      this->position_msg.y = this->joint_velocity;
-      this->position_msg.z = this->joint_acceleration;
+      ///this->position_msg.x = this->joint_position;
+      ///this->position_msg.y = this->joint_velocity;
+      ///this->position_msg.z = this->joint_acceleration;
+      this->position_msg.pose.pose.orientation.x = this->joint_position;
+      this->position_msg.twist.twist.angular.x = this->joint_velocity;
       this->pub.publish( this->position_msg );
       ros::spinOnce();
     }
 
-    void ROSCallback(const std_msgs::Float64::ConstPtr& msg)
+    ///void ROSCallback(const std_msgs::Float64::ConstPtr& msg)
+    void ROSCallback(const geometry_msgs::Wrench::ConstPtr& msg)
     {
-      this->joint->SetForce(0, msg->data);
+      ///this->joint->SetForce(0, msg->data);
+      this->joint->SetForce( 0, msg->torque.x );
     }
 
     private:
@@ -77,7 +86,8 @@ namespace gazebo
       double joint_position;
       double joint_velocity;
       double joint_acceleration;
-      geometry_msgs::Vector3 position_msg;
+      ///geometry_msgs::Vector3 position_msg;
+      nav_msgs::Odometry position_msg;
       common::Time last_update_time;
 
 

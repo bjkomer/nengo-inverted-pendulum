@@ -16,7 +16,7 @@ velocity_input = net.make_input('Velocity',value=[0])
 torque_population = net.make('Torque', neurons=600, dimensions=1) # population for the output torque
 
 net.connect('Position', 'Torque', weight=-0.9)
-net.connect('Velocity', 'Torque', weight=-0.3)
+net.connect('Velocity', 'Torque', weight=-0.2)
 
 def motion_callback( motion_msg ):
   position_input.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.pose.pose.orientation.x ] ) ) 
@@ -30,7 +30,9 @@ def main():
   while not rospy.is_shutdown():
     torque = torque_population.origin['X'].decoded_output.get_value()[0]
     torque_msg = Wrench()
-    torque_msg.torque.x = torque * 42#* 2337
+    # Gazebo uses 2337, morse uses 42, TODO: figure out what the difference is
+    #torque_msg.torque.x = torque * 2337
+    torque_msg.torque.x = torque * 42
     pub.publish( torque_msg )
     net.run(0.01) # TODO: step the right amount of time
     r.sleep()

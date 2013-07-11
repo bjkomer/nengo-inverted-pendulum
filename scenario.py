@@ -1,5 +1,4 @@
 from morse.builder import *
-#from pendulum import Pendulum
 
 pendulum = Pendulum('pendulum')
 pendulum.translate(x=0.0, z=0)
@@ -10,6 +9,7 @@ driver.translate(x=2.0, y=2.0)
 
 torque = ForceTorque()
 odom = Odometry()
+odom.level( "relative" )
 
 pendulum.append( torque )
 pendulum.append( odom )

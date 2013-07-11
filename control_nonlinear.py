@@ -2,15 +2,19 @@ lambd = 0.9
 kappa = 5
 rho = 0.2
 
+MORSE = True
+
 ##import numeric as np
 import numpy as np
 import math
 import rospy
 from std_msgs.msg import Float64 # TODO: switch to float32 since this is what nengo uses
-from geometry_msgs.msg import Vector3 # TODO: make this a message specifically for position and velocity
+from geometry_msgs.msg import Vector3, Wrench # TODO: make this a message specifically for position and velocity
+from nav_msgs.msg import Odometry
 
 ##import nef
-from nengo import nef_theano as nef
+#from nengo import nef_theano as nef
+import nengo_theano as nef
 """
 class NonlinearControl(nef.Node):
     def __init__(self, name, lambd=lambd, kappa=kappa, rho=rho, D=1):
@@ -103,9 +107,9 @@ net = nef.Network('Nonlinear Control', seed=1)
 
 ##plant = net.add(Physics('plant'))
 
-x = net.make_input('x',value=[0])
-dx = net.make_input('dx',value=[0])
-ddx = net.make_input('ddx',value=[0])
+x = net.make_input('x',values=[0])
+dx = net.make_input('dx',values=[0])
+ddx = net.make_input('ddx',values=[0])
 
 #control = net.add(NonlinearControl('control'))
 ##net.connect(plant.getOrigin('x'), control.getTermination('x'))
@@ -157,8 +161,10 @@ class Learn(nef.Node):
 class Learn(nef.SimpleNode):
     def __init__(self, name, origin):
         nef.SimpleNode.__init__(self, name)
-        self.s = self.make_input('s', dimensions=1, pstc=0.01)
-        self.Y = self.make_input('Y', dimensions=300, pstc=0.01)
+        self.s = self.add_input('s', dimensions=1, pstc=0.01)
+        self.Y = self.add_input('Y', dimensions=300, pstc=0.01)
+        #self.s = self.add_input('s', dimensions=1 )
+        #self.Y = self.add_input('Y', dimensions=300 )
         self.origin = origin
         self.counter = 0
     def tick(self):
@@ -171,12 +177,13 @@ class Learn(nef.SimpleNode):
             decoder = np.array(self.origin.decoders)
             self.origin.decoders = decoder + da
         
-##learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
+#learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
 #learn=net.add(Learn('learn', net.get_origin('state').getOrigin('learn')))
 #learn=net.add(Learn('learn', net.get_origin('state')))
 ##net.connect('s', learn.getTermination('s'))
 ##net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
-        
+
+learn = net.add( Learn( 'learn', net.get_origin('state') ) )
 
 
 #net.connect(control.getOrigin('u'), plant.getTermination('u'))
@@ -189,19 +196,38 @@ def motion_callback( motion_msg ):
   dx.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.y ] ) ) 
   ddx.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.z ] ) ) 
 
+def odom_callback( motion_msg ):
+  x.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.pose.pose.orientation.x ] ) ) 
+  dx.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.twist.twist.angular.x ] ) ) 
+  ddx.origin['X'].decoded_output.set_value( np.float32( [ 0 ] ) ) # FIXME: get acceleration here
+
 def main():
-  rospy.init_node('pendulum_brain', anonymous=True)
-  pub = rospy.Publisher('pendulum/torque', Float64)
-  r = rospy.Rate(10) # 10 Hz
-  # TODO: make this position and velocity
-  sub = rospy.Subscriber('pendulum/motion', Vector3, motion_callback)
-  while not rospy.is_shutdown():
-    torque = u.origin['X'].decoded_output.get_value()[0]
-    torque_msg = Float64()
-    torque_msg.data = torque * 2337
-    pub.publish( torque_msg )
-    net.run(0.01) # TODO: step the right amount of time
-    r.sleep()
+  if MORSE == True:
+    rospy.init_node('pendulum_brain', anonymous=True)
+    pub = rospy.Publisher('pendulum/control', Wrench)
+    r = rospy.Rate(10) # 10 Hz
+    # TODO: make this position and velocity
+    sub = rospy.Subscriber('pendulum/motion', Odometry, odom_callback)
+    while not rospy.is_shutdown():
+      torque = u.origin['X'].decoded_output.get_value()[0]
+      torque_msg = Wrench()
+      torque_msg.torque.x = torque * 42
+      pub.publish( torque_msg )
+      net.run(0.01) # TODO: step the right amount of time
+      r.sleep()
+  else: #Gazebo
+    rospy.init_node('pendulum_brain', anonymous=True)
+    pub = rospy.Publisher('pendulum/torque', Float64)
+    r = rospy.Rate(10) # 10 Hz
+    # TODO: make this position and velocity
+    sub = rospy.Subscriber('pendulum/motion', Vector3, motion_callback)
+    while not rospy.is_shutdown():
+      torque = u.origin['X'].decoded_output.get_value()[0]
+      torque_msg = Float64()
+      torque_msg.data = torque * 2337
+      pub.publish( torque_msg )
+      net.run(0.01) # TODO: step the right amount of time
+      r.sleep()
 
 if __name__ == '__main__':
   main()
