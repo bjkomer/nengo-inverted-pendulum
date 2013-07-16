@@ -12,7 +12,8 @@ import com.xhaus.jyson.JysonCodec as json # Jython version of json
 from com.xhaus.jyson import JSONDecodeError, JSONEncodeError
 
 HOST = '127.0.0.1'
-PORT = 60000
+PORT_ODOM = 60000
+PORT_CONT = 60001
 
 import nef
 
@@ -74,13 +75,11 @@ class Physics(nef.Node):
         nef.Node.__init__(self, name)
         
         # Connect with MORSE through a socket
-        self.sock = connect_port( PORT )
-        if not self.sock:
+        self.sock_in = connect_port( PORT_ODOM ) # Reads odometry
+        self.sock_out = connect_port( PORT_CONT ) # Outputs control signal (torque)
+        if not self.sock_in or not self.sock_out:
           sys.exit(1)
 
-        self._id = 0
-        print( "sock connected" )
-        
         self.x = self.make_output('x', dimensions=1)
         self.dx = self.make_output('dx', dimensions=1)
         self.ddx = self.make_output('ddx', dimensions=1)
@@ -94,6 +93,9 @@ class Physics(nef.Node):
         u = np.array(self.u.get())[0]
         
         # Send u to the simulator as a torque
+        #data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 15)
+        data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % u
+        self.sock_out.send( data_out )
 
         J = 0.1
         b = 0
@@ -104,7 +106,8 @@ class Physics(nef.Node):
         x += dx*dt    
         
         # Read in the angular position and velocity from the simulator
-        morse = self.sock.makefile("r")
+        
+        morse = self.sock_in.makefile("r")
         try:
           data_in = json.loads(morse.readline())
           x = data_in["roll"]
@@ -168,108 +171,14 @@ class Learn(nef.Node):
             decoder = np.array(self.origin.decoders)
             self.origin.decoders = decoder + da
         
-        
 learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
 net.connect('s', learn.getTermination('s'))
 net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
-        
-
 
 #net.connect(control.getOrigin('u'), plant.getTermination('u'))
 net.connect('u', plant.getTermination('u'))
 
-def communication():
-  sock = connect_port( PORT )
-  if not sock:
-    sys.exit(1)
-
-  print( "sock connected" )
-  print( "please press q to quit and use 8456 to move" )
-  esc = 0
-  _id = 0
-
-  while not esc:
-    c = "6" #getchar()
-    speed = 0
-    rot = 0
-    if (c=="8"):
-      speed = 0.1
-    elif (c=="5"):
-      speed = -0.1
-    elif (c=="4"):
-      rot = 0.1
-    elif (c=="6"):
-      rot = -0.1
-    if (speed != 0 or rot != 0):
-      data_out = "id%d human move [%f, %f]\n" % (_id, speed, rot)
-      sent = sock.send(data_out)
-      print ("SENT DATA (%d bytes): %s" % (sent, data_out))
-      _id = _id + 1
-
-    if c == "q":
-      esc = 1
-
-  sock.close()
-  print("\nBye bye!")
-
-def move_robot( u ):
-  sock = connect_port( PORT )
-  if not sock:
-    sys.exit(1)
-
-  print( "sock connected" )
-  print( "please press q to quit and use 8456 to move" )
-  esc = 0
-  _id = 0
-  #speed = 2
-  rot = -1
-  #speed = u.origin['X'].decoded_output.get_value()[0]
-  #speed = np.array(u.get())[0]
-  speed = u.getOrigin('X').getValues().getValues()[0]
-  print (speed)
-
-  while not esc:
-    data_out = "id%d atrv.motion set_speed [%f, %f]\n" % (_id, speed, rot)
-    sent = sock.send(data_out)
-    #print ("SENT DATA (%d bytes): %s" % (sent, data_out))
-    _id = _id + 1
-
-
-
-
-
-
-
-
-"""
-def odom_callback( motion_msg ):
-  x.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.pose.pose.orientation.x ] ) ) 
-  dx.origin['X'].decoded_output.set_value( np.float32( [ motion_msg.twist.twist.angular.x ] ) ) 
-  ddx.origin['X'].decoded_output.set_value( np.float32( [ 0 ] ) ) # FIXME: get acceleration here
-
-def main():
-  rospy.init_node('pendulum_brain', anonymous=True)
-  pub = rospy.Publisher('pendulum/control', Wrench)
-  r = rospy.Rate(10) # 10 Hz
-  # TODO: make this position and velocity
-  sub = rospy.Subscriber('pendulum/motion', Odometry, odom_callback)
-  while not rospy.is_shutdown():
-    torque = u.origin['X'].decoded_output.get_value()[0]
-    torque_msg = Wrench()
-    torque_msg.torque.x = torque * 42
-    pub.publish( torque_msg )
-    net.run(0.01) # TODO: step the right amount of time
-    r.sleep()
-"""
-
-
-
-
-
-
-#communication()
 
 net.view()
 net.add_to_nengo()        
-#move_robot( u )
         
