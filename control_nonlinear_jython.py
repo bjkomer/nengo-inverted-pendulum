@@ -86,46 +86,65 @@ class Physics(nef.Node):
         
         self.u = self.make_input('u', dimensions=1)
         
+        self.counter = 0 # Used so that computations don't need to occur on every tick
+
     def tick(self):
-        dt = 0.001
-        x = self.x._value[0]
-        dx = self.dx._value[0]
-        u = np.array(self.u.get())[0]
-        
-        # Send u to the simulator as a torque
-        #data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 15)
-        data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % u
-        self.sock_out.send( data_out )
 
-        J = 0.1
-        b = 0
-        mgl = 0.1
+        self.counter += 1
+        if self.counter % 10 == 0: #FIXME == 0
+          dt = 0.001 * 10
+          x = self.x._value[0]
+          dx = self.dx._value[0]
+          u = np.array(self.u.get())[0]
+          
+          # Send u to the simulator as a torque
+          data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 2.3 )
+          #data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % u
+          self.sock_out.send( data_out )
 
-        ddx = u/J + dx*abs(dx)*b/J + mgl*math.sin(x)/J
-        dx += ddx*dt
-        x += dx*dt    
-        
-        # Read in the angular position and velocity from the simulator
-        
-        morse = self.sock_in.makefile("r")
-        try:
-          data_in = json.loads(morse.readline())
-          x = data_in["roll"]
-          dx = data_in["wx"]
-        except JSONDecodeError:
-          print "ERROR: malformed message, dropping data"
-          return
-        
-        while x>math.pi:
-            x -= math.pi*2
-        while x<-math.pi:
-            x += math.pi*2
-        
-        self.x.set([x])
-        self.dx.set([dx])
-        self.ddx.set([ddx])
-        
+          J = 0.1
+          b = 0
+          mgl = 0.1
+
+          ddx = u/J + dx*abs(dx)*b/J + mgl*math.sin(x)/J
+          dx += ddx*dt
+          x += dx*dt    
+          
+          # Read in the angular position and velocity from the simulator
+          
+          morse = self.sock_in.makefile("r")
+          try:
+            data_in = json.loads(morse.readline())
+            x = data_in["roll"]
+            dx = data_in["wx"]
+          except JSONDecodeError:
+            #print "ERROR: malformed message, dropping data, trying again"
+            try:
+              data_in = json.loads(morse.readline())
+              x = data_in["roll"]
+              dx = data_in["wx"]
+            except JSONDecodeError:
+              print "ERROR: malformed message, dropping data, skipping cycle"
+              return
+          
+          while x>math.pi:
+              x -= math.pi*2
+          while x<-math.pi:
+              x += math.pi*2
+          
+          self.x.set([x])
+          self.dx.set([dx])
+          self.ddx.set([ddx])
+
+# TEMP - for testing
+class SlowNetwork( nef.Network ):
+  def __init__( self, name, seed=None ):
+    nef.Network.__init__( self, name, seed )
+    self.dt = 0.1
+
+#TEMP
 net = nef.Network('Nonlinear Control', seed=1)
+#net = SlowNetwork('Nonlinear Control', seed=1)
 
 plant = net.add(Physics('plant'))
 
@@ -134,7 +153,7 @@ plant = net.add(Physics('plant'))
 #net.connect(plant.getOrigin('dx'), control.getTermination('dx'))
 #net.connect(plant.getOrigin('ddx'), control.getTermination('ddx'))
 
-net.make_input('target', [1])
+net.make_input('target', [0])
 #net.connect('target', control.getTermination('desired'))
 
 
@@ -163,7 +182,7 @@ class Learn(nef.Node):
         self.counter = 0
     def tick(self):
         self.counter += 1
-        if self.counter%10 == 0:
+        if self.counter%10 == 0: #10 FIXME
             delta = -rho * np.array(self.s.get())*0.00001
             Y = np.array(list(self.Y.get()))
             Y.shape = 300,1
@@ -179,6 +198,10 @@ net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))
 net.connect('u', plant.getTermination('u'))
 
 
-net.view()
+#net.view()
 net.add_to_nengo()        
-        
+ 
+#while True:
+#  net.run(1000, dt=0.001)
+#net.run(1000, dt=0.02)
+net.run(1000, dt=0.01)

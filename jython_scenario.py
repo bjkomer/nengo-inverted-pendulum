@@ -24,6 +24,9 @@ keyboard = Keyboard()
 keyboard.properties(Speed=3.0)
 driver.append(keyboard)
 
+# FIXME: temporary for testing latency issues
+#odom.frequency(frequency=60)
+
 torque.add_interface( 'socket' )
 odom.add_interface( 'socket' )
 
