@@ -17,6 +17,11 @@ PORT_CONT = 60001
 
 import nef
 
+#FIXME: temporary for tuning timing parameters
+PHYSICS_PERIOD = 10
+LEARNING_PERIOD = 50
+import time #for timing data
+
 def connect_port( port ):
   """ Establish the connection with the given MORSE port"""
   sock = None
@@ -88,17 +93,23 @@ class Physics(nef.Node):
         
         self.counter = 0 # Used so that computations don't need to occur on every tick
 
+        # For time benchmarking
+        self.total_time = 0
+        self.avg_time = 0
+
     def tick(self):
 
         self.counter += 1
-        if self.counter % 10 == 0: #FIXME == 0
-          dt = 0.001 * 10
+        if self.counter % PHYSICS_PERIOD == 0: #FIXME == 0
+          #t_start = time.time()
+          dt = 0.001 * PHYSICS_PERIOD
           x = self.x._value[0]
           dx = self.dx._value[0]
           u = np.array(self.u.get())[0]
           
           # Send u to the simulator as a torque
-          data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 2.3 )
+          #data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 2.3 )
+          data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 4.6 )
           #data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % u
           self.sock_out.send( data_out )
 
@@ -107,8 +118,8 @@ class Physics(nef.Node):
           mgl = 0.1
 
           ddx = u/J + dx*abs(dx)*b/J + mgl*math.sin(x)/J
-          dx += ddx*dt
-          x += dx*dt    
+          #dx += ddx*dt
+          #x += dx*dt    
           
           # Read in the angular position and velocity from the simulator
           
@@ -127,14 +138,17 @@ class Physics(nef.Node):
               print "ERROR: malformed message, dropping data, skipping cycle"
               return
           
-          while x>math.pi:
-              x -= math.pi*2
-          while x<-math.pi:
-              x += math.pi*2
+          #while x>math.pi:
+          #    x -= math.pi*2
+          #while x<-math.pi:
+          #    x += math.pi*2
           
           self.x.set([x])
           self.dx.set([dx])
           self.ddx.set([ddx])
+          
+          #self.total_time += time.time() - t_start
+          #print( "physics: %f" % ( self.total_time / self.counter * PHYSICS_PERIOD ) )
 
 # TEMP - for testing
 class SlowNetwork( nef.Network ):
@@ -157,7 +171,8 @@ net.make_input('target', [0])
 #net.connect('target', control.getTermination('desired'))
 
 
-net.make('state', 300, 3, radius=2)
+#net.make('state', 300, 3, radius=2)
+net.make('state', 150, 3, radius=2)
 net.connect(plant.getOrigin('x'), 'state', index_post=0)
 net.connect(plant.getOrigin('dx'), 'state', index_post=1)
 net.connect(plant.getOrigin('ddx'), 'state', index_post=2)
@@ -177,18 +192,26 @@ class Learn(nef.Node):
     def __init__(self, name, origin):
         nef.Node.__init__(self, name)
         self.s = self.make_input('s', dimensions=1, pstc=0.01)
-        self.Y = self.make_input('Y', dimensions=300, pstc=0.01)
+        #self.Y = self.make_input('Y', dimensions=300, pstc=0.01)
+        self.Y = self.make_input('Y', dimensions=150, pstc=0.01)
         self.origin = origin
         self.counter = 0
+        # added for testing
+        self.total_time = 0
+        self.avg_time = 0
     def tick(self):
         self.counter += 1
-        if self.counter%10 == 0: #10 FIXME
+        if self.counter % LEARNING_PERIOD == 0: #10 FIXME
+            #t_start = time.time()
             delta = -rho * np.array(self.s.get())*0.00001
             Y = np.array(list(self.Y.get()))
-            Y.shape = 300,1
+            #Y.shape = 300,1
+            Y.shape = 150,1
             da = np.dot(Y, delta)
             decoder = np.array(self.origin.decoders)
             self.origin.decoders = decoder + da
+            #self.total_time += time.time() - t_start
+            #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
         
 learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
 net.connect('s', learn.getTermination('s'))
@@ -198,10 +221,10 @@ net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))
 net.connect('u', plant.getTermination('u'))
 
 
-#net.view()
+net.view()
 net.add_to_nengo()        
  
 #while True:
 #  net.run(1000, dt=0.001)
 #net.run(1000, dt=0.02)
-net.run(1000, dt=0.01)
+#net.run(1000, dt=0.1)
