@@ -158,14 +158,21 @@ class Learn(nef.Node):
             decoder = np.array(self.origin.decoders)
             self.origin.decoders = decoder + da
 """        
+def dummy():
+  pass
+
 class Learn(nef.SimpleNode):
     def __init__(self, name, origin):
         nef.SimpleNode.__init__(self, name)
-        self.s = self.add_input('s', dimensions=1, pstc=0.01)
-        self.Y = self.add_input('Y', dimensions=300, pstc=0.01)
-        #self.s = self.add_input('s', dimensions=1 )
-        #self.Y = self.add_input('Y', dimensions=300 )
-        self.origin = origin
+        #self.s = self.add_input('s', dimensions=1, pstc=0.01)
+        #self.Y = self.add_input('Y', dimensions=300, pstc=0.01)
+        self.s = self.add_input('s', dimensions=1 )
+        self.Y = self.add_input('Y', dimensions=300 )
+        #self.origin = origin
+        self.origin = { origin : net.get_origin( origin ) }
+        #self.origin.func = learn # FIXME: is this right??
+        #net.get_origin( origin ).func = learn # FIXME: is this right??
+        net.get_origin( origin ).func = dummy # FIXME: is this right??
         self.counter = 0
     def tick(self):
         self.counter += 1
@@ -183,11 +190,15 @@ class Learn(nef.SimpleNode):
 ##net.connect('s', learn.getTermination('s'))
 ##net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
 
-learn = net.add( Learn( 'learn', net.get_origin('state') ) )
+#learn = net.add( Learn( 'learn', net.get_origin('state') ) )
+learn = net.add( Learn( 'learn', 'state' ) )
+net.connect('s', 'learn:s')
+#net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
+net.connect('state', 'learn:Y')  
 
 
 #net.connect(control.getOrigin('u'), plant.getTermination('u'))
-##net.connect('u', plant.getTermination('u'))
+#net.connect('u', plant.getTermination('u'))
 
 
         
