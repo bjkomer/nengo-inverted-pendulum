@@ -208,8 +208,9 @@ class Learn(nef.Node):
             #Y.shape = 300,1
             Y.shape = 150,1
             da = np.dot(Y, delta)
-            decoder = np.array(self.origin.decoders)
-            self.origin.decoders = decoder + da
+            ###decoder = np.array(self.origin.decoders)
+            ###self.origin.decoders = decoder + da #FIXME: this line takes 50ms to run
+            self.origin.decoders += da #FIXME: attempt to make it faster
             #self.total_time += time.time() - t_start
             #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
         
