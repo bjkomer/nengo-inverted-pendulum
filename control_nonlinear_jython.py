@@ -6,14 +6,15 @@ import numeric as np
 import math
 import socket
 import sys
-sys.path.append('/home/komer/Downloads/jyson-1.0.2/src')
-sys.path.append('/home/komer/Downloads/jyson-1.0.2/lib/jyson-1.0.2.jar')
+sys.path.append('/home/bjkomer/Downloads/jyson-1.0.2/src')
+sys.path.append('/home/bjkomer/Downloads/jyson-1.0.2/lib/jyson-1.0.2.jar')
 import com.xhaus.jyson.JysonCodec as json # Jython version of json
 from com.xhaus.jyson import JSONDecodeError, JSONEncodeError
 
 HOST = '127.0.0.1'
-PORT_ODOM = 60000
-PORT_CONT = 60001
+# TODO: these port values are not consistently the same in morse
+PORT_ODOM = 60001
+PORT_CONT = 60000
 
 import nef
 
