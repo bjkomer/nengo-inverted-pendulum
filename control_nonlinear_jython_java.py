@@ -19,9 +19,10 @@ PORT_ODOM = 60001
 PORT_CONT = 60000
 
 import nef
+from nef.node import NodeTermination
 
 #FIXME: temporary for tuning timing parameters
-PHYSICS_PERIOD = 10 #10
+PHYSICS_PERIOD = 30 #10
 LEARNING_PERIOD = 30 #50
 import time #for timing data
 
@@ -258,7 +259,11 @@ class Learn(nef.Node):
             #self.total_time += time.time() - t_start
             #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
 """        
-learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
+learn = Learn('learn', net.get('state').getOrigin('learn'))
+s = NodeTermination( 's', learn, dimensions=1, tau=0.01)
+Y = NodeTermination( 'Y', learn, dimensions=300, tau=0.01)
+learn.addLearningTerminations( s, Y )
+net.add( learn )
 net.connect('s', learn.getTermination('s'))
 net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
 
@@ -266,8 +271,8 @@ net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))
 net.connect('u', plant.getTermination('u'))
 
 
-#net.view()
-net.run(10)
+net.view()
+#net.run(30)
 net.add_to_nengo()        
  
 #while True:
