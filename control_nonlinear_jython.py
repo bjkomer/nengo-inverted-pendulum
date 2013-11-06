@@ -9,7 +9,6 @@ import sys
 sys.path.append('/home/bjkomer/Downloads/jyson-1.0.2/src')
 sys.path.append('/home/bjkomer/Downloads/jyson-1.0.2/lib/jyson-1.0.2.jar')
 sys.path.append('/home/bjkomer/nengo-inverted-pendulum')
-import Learn
 import com.xhaus.jyson.JysonCodec as json # Jython version of json
 from com.xhaus.jyson import JSONDecodeError, JSONEncodeError
 
@@ -231,7 +230,7 @@ net.connect('s', 'u', weight=-kappa)
 def learn(x):
     return [0]
 net.connect('state', 'u', func=learn)
-"""
+
 class Learn(nef.Node):
     def __init__(self, name, origin):
         nef.Node.__init__(self, name)
@@ -255,9 +254,14 @@ class Learn(nef.Node):
             ###decoder = np.array(self.origin.decoders)
             ###self.origin.decoders = decoder + da #FIXME: this line takes 50ms to run
             self.origin.decoders += da #FIXME: attempt to make it faster
+            print( delta.shape )
+            print ( Y.shape )
+            print ( da.shape )
+            print ( np.array(self.origin.decoders).shape )
+            print( "" )
             #self.total_time += time.time() - t_start
             #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
-"""        
+       
 learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
 net.connect('s', learn.getTermination('s'))
 net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  

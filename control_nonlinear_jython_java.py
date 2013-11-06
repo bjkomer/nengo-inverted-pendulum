@@ -22,8 +22,8 @@ import nef
 from nef.node import NodeTermination
 
 #FIXME: temporary for tuning timing parameters
-PHYSICS_PERIOD = 30 #10
-LEARNING_PERIOD = 30 #50
+PHYSICS_PERIOD = 10 #10
+LEARNING_PERIOD = 10 #50
 import time #for timing data
 
 def connect_port( port ):
@@ -140,7 +140,8 @@ class Physics(nef.Node):
           u = np.array(self.u.get())[0]
           #"""
           # Send u to the simulator as a torque
-          data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 4.6 )
+          #data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % (u * 4.6 )
+          data_out = '{"force":[0,0,0],"torque":[%f,0,0]}\n' % u
           self.sock_out.send( data_out )
           #"""
           J = 0.1
@@ -151,7 +152,7 @@ class Physics(nef.Node):
           #dx += ddx*dt
           #x += dx*dt    
           
-          
+          # FIXME: calculate acceleration properly
           self.x.set([self.sensor_data["roll"]])
           self.dx.set([self.sensor_data["wx"]])
           self.ddx.set([ddx])
@@ -216,13 +217,13 @@ net.make_input('target', [0])
 #net.connect('target', control.getTermination('desired'))
 
 
-net.make('state', 300, 3, radius=2)
+state = net.make('state', 300, 3, radius=2)
 #net.make('state', 150, 3, radius=2)
 net.connect(plant.getOrigin('x'), 'state', index_post=0)
 net.connect(plant.getOrigin('dx'), 'state', index_post=1)
 net.connect(plant.getOrigin('ddx'), 'state', index_post=2)
 
-net.make('s', 100, 1)
+s = net.make('s', 100, 1)
 net.connect('state', 's', transform=[lambd, 1, 0])
 net.connect('target', 's', weight=-lambd)
 
@@ -259,13 +260,21 @@ class Learn(nef.Node):
             #self.total_time += time.time() - t_start
             #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
 """        
-learn = Learn('learn', net.get('state').getOrigin('learn'))
-s = NodeTermination( 's', learn, dimensions=1, tau=0.01)
-Y = NodeTermination( 'Y', learn, dimensions=300, tau=0.01)
-learn.addLearningTerminations( s, Y )
+##s_learn = net.make('s_learn', neurons=100, dimensions=1 )
+##Y_learn = net.make('Y_learn', neurons=300, dimensions=300)
+##net.connect('state', 'Y_learn')
+##net.connect('s', s_learn)
+###net.connect(net.get('state').getOrigin('AXON'), Y_learn)  
+####net.connect('state', Y_learn)  
+#learn = Learn('learn_node', net.get('state').getOrigin('learn'), s_learn, Y_learn)
+learn = Learn('learn_node', net.get('state').getOrigin('learn'), s, state)
+#learn = Learn('learn_node', net.get('state').getOrigin('learn'), s, Y_learn)
+
+
 net.add( learn )
-net.connect('s', learn.getTermination('s'))
-net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
+#net.connect('s', learn.getTermination('s_learn'))
+#net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
+#net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y_learn'))  
 
 #net.connect(control.getOrigin('u'), plant.getTermination('u'))
 net.connect('u', plant.getTermination('u'))
