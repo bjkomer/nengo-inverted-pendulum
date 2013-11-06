@@ -68,7 +68,7 @@ class NonlinearControl(nef.Node):
     def tick(self):        
         s = np.array(self.dx.get()) + self.lambd*(np.array(self.x.get()) - np.array(self.x_desired.get()))
         
-        # shuld be ddx_r, which in this case is -lambda*dx
+        # should be ddx_r, which in this case is -lambda*dx
         Y = np.array([self.ddx.get()[0], self.dx.get()[0]*abs(self.dx.get()[0]), math.sin(self.x.get()[0])])
         # ddx_r = -lambd * dx
         self.u.set(sum(self.a * Y) - self.kappa * s)
@@ -196,29 +196,14 @@ class Physics(nef.Node):
         self.sock_in = self.sock_out
         self.sock_out = temp
 
-# TEMP - for testing
-class SlowNetwork( nef.Network ):
-  def __init__( self, name, seed=None ):
-    nef.Network.__init__( self, name, seed )
-    self.dt = 0.1
-
-#TEMP
 net = nef.Network('Nonlinear Control', seed=1)
-#net = SlowNetwork('Nonlinear Control', seed=1)
 
 plant = net.add(Physics('plant'))
 
-#control = net.add(NonlinearControl('control'))
-#net.connect(plant.getOrigin('x'), control.getTermination('x'))
-#net.connect(plant.getOrigin('dx'), control.getTermination('dx'))
-#net.connect(plant.getOrigin('ddx'), control.getTermination('ddx'))
-
 net.make_input('target', [0])
-#net.connect('target', control.getTermination('desired'))
 
 
 state = net.make('state', 300, 3, radius=2)
-#net.make('state', 150, 3, radius=2)
 net.connect(plant.getOrigin('x'), 'state', index_post=0)
 net.connect(plant.getOrigin('dx'), 'state', index_post=1)
 net.connect(plant.getOrigin('ddx'), 'state', index_post=2)
@@ -233,58 +218,12 @@ net.connect('s', 'u', weight=-kappa)
 def learn(x):
     return [0]
 net.connect('state', 'u', func=learn)
-"""
-class Learn(nef.Node):
-    def __init__(self, name, origin):
-        nef.Node.__init__(self, name)
-        self.s = self.make_input('s', dimensions=1, pstc=0.01)
-        self.Y = self.make_input('Y', dimensions=300, pstc=0.01)
-        #self.Y = self.make_input('Y', dimensions=150, pstc=0.01)
-        self.origin = origin
-        self.counter = 0
-        # added for testing
-        self.total_time = 0
-        self.avg_time = 0
-    def tick(self):
-        self.counter += 1
-        if self.counter % LEARNING_PERIOD == 0: #10 FIXME
-            #t_start = time.time()
-            delta = -rho * np.array(self.s.get())*0.00001
-            Y = np.array(list(self.Y.get()))
-            Y.shape = 300,1
-            #Y.shape = 150,1
-            da = np.dot(Y, delta)
-            ###decoder = np.array(self.origin.decoders)
-            ###self.origin.decoders = decoder + da #FIXME: this line takes 50ms to run
-            self.origin.decoders += da #FIXME: attempt to make it faster
-            #self.total_time += time.time() - t_start
-            #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
-"""        
-##s_learn = net.make('s_learn', neurons=100, dimensions=1 )
-##Y_learn = net.make('Y_learn', neurons=300, dimensions=300)
-##net.connect('state', 'Y_learn')
-##net.connect('s', s_learn)
-###net.connect(net.get('state').getOrigin('AXON'), Y_learn)  
-####net.connect('state', Y_learn)  
-#learn = Learn('learn_node', net.get('state').getOrigin('learn'), s_learn, Y_learn)
-learn = Learn('learn_node', net.get('state').getOrigin('learn'), s, state)
-#learn = Learn('learn_node', net.get('state').getOrigin('learn'), s, Y_learn)
 
+learn = Learn('learn_node', net.get('state').getOrigin('learn'), s, state)
 
 net.add( learn )
-#net.connect('s', learn.getTermination('s_learn'))
-#net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y'))  
-#net.connect(net.get('state').getOrigin('AXON'), learn.getTermination('Y_learn'))  
 
-#net.connect(control.getOrigin('u'), plant.getTermination('u'))
 net.connect('u', plant.getTermination('u'))
 
-
 net.view()
-#net.run(30)
 net.add_to_nengo()        
- 
-#while True:
-#  net.run(1000, dt=0.001)
-#net.run(1000, dt=0.02)
-#net.run(1000, dt=0.1)
