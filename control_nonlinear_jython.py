@@ -1,5 +1,5 @@
 lambd = 0.9
-kappa = 5
+kappa = 5 / 5
 rho = 0.2
 
 import numeric as np
@@ -21,7 +21,7 @@ import nef
 
 #FIXME: temporary for tuning timing parameters
 PHYSICS_PERIOD = 10 #10
-LEARNING_PERIOD = 30 #50
+LEARNING_PERIOD = 10 #50
 import time #for timing data
 
 def connect_port( port ):
@@ -246,19 +246,15 @@ class Learn(nef.Node):
         self.counter += 1
         if self.counter % LEARNING_PERIOD == 0: #10 FIXME
             #t_start = time.time()
-            delta = -rho * np.array(self.s.get())*0.00001
+            delta = -rho * np.array(self.s.get())*0.00001 *.1
             Y = np.array(list(self.Y.get()))
             Y.shape = 300,1
             #Y.shape = 150,1
             da = np.dot(Y, delta)
+            da.shape = 300,1 #Bug fix
             ###decoder = np.array(self.origin.decoders)
             ###self.origin.decoders = decoder + da #FIXME: this line takes 50ms to run
             self.origin.decoders += da #FIXME: attempt to make it faster
-            print( delta.shape )
-            print ( Y.shape )
-            print ( da.shape )
-            print ( np.array(self.origin.decoders).shape )
-            print( "" )
             #self.total_time += time.time() - t_start
             #print( "learning: %f" % ( self.total_time / self.counter * LEARNING_PERIOD ) )
        

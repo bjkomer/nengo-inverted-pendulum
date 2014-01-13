@@ -1,5 +1,5 @@
 lambd = 0.9
-kappa = 5
+kappa = 5 / 5
 rho = 0.2
 
 import numeric as np
@@ -77,21 +77,26 @@ class Physics(nef.Node):
         self.ddx.set([ddx])
         
         
-net = nef.Network('Nonlinear Control', seed=1)
+#net = nef.Network('Nonlinear Control', seed=1)
+net = nef.Network('Nonlinear Control', seed=13)
 
 plant = net.add(Physics('plant'))
 
 net.make_input('target', [1])
 
+#state = net.make('state', 300, 3, radius=2)
 state = net.make('state', 300, 3, radius=2)
 net.connect(plant.getOrigin('x'), 'state', index_post=0)
 net.connect(plant.getOrigin('dx'), 'state', index_post=1)
 net.connect(plant.getOrigin('ddx'), 'state', index_post=2)
 
+#s = net.make('s', 100, 1)
 s = net.make('s', 100, 1)
+#net.connect('state', 's', transform=[lambd, 1, 0])
 net.connect('state', 's', transform=[lambd, 1, 0])
 net.connect('target', 's', weight=-lambd)
 
+#net.make('u', 100, 1, radius=1)
 net.make('u', 100, 1, radius=1)
 net.connect('s', 'u', weight=-kappa)
 

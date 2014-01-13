@@ -44,6 +44,10 @@ public class Learn implements ca.nengo.model.Node {
     private float[] da;
     private float delta;
 
+    private float decay;
+    private float filtered;
+    private double dt=0.001;
+
     public Learn( String name, DecodedOrigin the_origin, NEFEnsembleImpl s_ens, NEFEnsembleImpl Y_ens ) {
         super( );
 	myName = name;
@@ -54,6 +58,9 @@ public class Learn implements ca.nengo.model.Node {
 	s = s_ens;
 	Y = Y_ens;
 	origin = the_origin;
+	decay = (float)Math.exp(-dt/0.01);
+	//decay = (float)Math.exp(-dt/0.001);
+	//decay = (float)Math.exp(-dt/0.1);
     }
     @Override
     public void run( float startTime, float endTime )
@@ -63,7 +70,8 @@ public class Learn implements ca.nengo.model.Node {
             
 	    try {
 		val_s = ((RealOutputImpl)(s.getOrigin("X")).getValues()).getValues();  // (1,)
-		delta = val_s[0] * -rho * 0.00001f;
+		filtered = filtered*decay + val_s[0] * (1-decay);
+		delta = filtered * -rho * 0.00001f * 0.1f;
 		val_Y = ((SpikeOutputImpl)(Y.getOrigin("AXON")).getValues()).getValues();  // (300,)
 		decoder = origin.getDecoders(); // (300, 300)
 		int length_i = val_Y.length;
@@ -113,12 +121,12 @@ public class Learn implements ca.nengo.model.Node {
 
     @Override
     public String getName() {
-	return "";
+	return myName;
     }
     
     @Override
     public void setName( String name ) {
-	return;
+	myName = name;
     }
     
     @Override

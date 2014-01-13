@@ -1,5 +1,5 @@
 lambd = 0.9
-kappa = 5
+kappa = 5 / 5
 rho = 0.2
 
 import numeric as np

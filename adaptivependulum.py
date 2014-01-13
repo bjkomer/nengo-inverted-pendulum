@@ -1,5 +1,5 @@
 lambd = 0.9
-kappa = 5
+kappa = 5 / 5
 rho = 0.2
 
 import numeric as np
@@ -107,11 +107,17 @@ class Learn(nef.Node):
     def tick(self):
         self.counter += 1
         if self.counter%10 == 0:
-            delta = -rho * np.array(self.s.get())*0.00001
+            delta = -rho * np.array(self.s.get())*0.00001 * .1
             Y = np.array(list(self.Y.get()))
             Y.shape = 300,1
             da = np.dot(Y, delta)
+            da.shape = 300,1 #Bug fix
             decoder = np.array(self.origin.decoders)
+            #print( "%.9f, %.9f, %.9f, %.9f" % ( decoder[0][0], decoder[13][0],
+            #                                   decoder[26][0], decoder[85][0] ) )
+            #print( decoder.shape )
+            #print( da.shape )
+            #print( (decoder + da).shape )
             self.origin.decoders = decoder + da
 
 learn=net.add(Learn('learn', net.get('state').getOrigin('learn')))
